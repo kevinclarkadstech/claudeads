@@ -48,6 +48,8 @@ export interface OAuthTokens {
 
 export interface AdsProvider {
   platform: Platform;
+  /** True for the sample-data provider; stored on the connection. */
+  isMock: boolean;
   /** URL to send the user to for consent. */
   getAuthorizationUrl(opts: { state: string; redirectUri: string }): string;
   exchangeCode(opts: { code: string; redirectUri: string }): Promise<OAuthTokens>;

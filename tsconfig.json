@@ -13,5 +13,5 @@
     "verbatimModuleSyntax": true,
     "types": ["./worker-configuration.d.ts", "vite/client"]
   },
-  "include": ["src", "vite.config.ts", "drizzle.config.ts", "worker-configuration.d.ts"]
+  "include": ["src", "test", "vite.config.ts", "vitest.config.ts", "drizzle.config.ts", "worker-configuration.d.ts"]
 }

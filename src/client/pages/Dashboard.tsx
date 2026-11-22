@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { signOut, useSession } from "../lib/auth-client";
+import { Connections } from "../components/Connections";
 
 type Me = { id: string; email: string; name: string };
 
@@ -33,18 +34,7 @@ export function DashboardPage() {
       </header>
       <main>
         <h2>Welcome{me ? `, ${me.name}` : ""}</h2>
-        <section className="grid">
-          <div className="card">
-            <h3>Meta Ads</h3>
-            <p className="muted">Connect your Meta ad accounts. (Milestone 2, mock first.)</p>
-            <button disabled>Connect Meta</button>
-          </div>
-          <div className="card">
-            <h3>Google Ads</h3>
-            <p className="muted">Connect your Google Ads accounts. (Milestone 6.)</p>
-            <button disabled>Connect Google</button>
-          </div>
-        </section>
+        <Connections />
       </main>
     </div>
   );

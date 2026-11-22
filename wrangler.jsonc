@@ -19,6 +19,10 @@
       "localConnectionString": "postgres://claudeads:claudeads@localhost:5432/claudeads"
     }
   ],
+  "kv_namespaces": [
+    // One-time OAuth `state` values (10 min TTL). No id needed: `wrangler deploy` auto-provisions it.
+    { "binding": "OAUTH_STATE" }
+  ],
   "vars": {
     "APP_URL": "http://localhost:5173",
     "USE_MOCK_PROVIDERS": "true"

@@ -86,11 +86,11 @@ partition by month (Postgres native partitioning) and/or keep ad-level rows for 
 | `*` | `/api/auth/*` (Better Auth) | 1 ✅ |
 | GET | `/api/health` | 1 ✅ |
 | GET | `/api/me` | 1 ✅ |
-| GET | `/api/connections` | 2 |
-| GET | `/api/connections/:platform/start` → redirect to consent (mock: instant) | 2 |
-| GET | `/api/connections/:platform/callback` | 2 |
-| DELETE | `/api/connections/:id` | 2 |
-| GET | `/api/ad-accounts` · PATCH `/api/ad-accounts/:id` (select) | 2 |
+| GET | `/api/connections` | 2 ✅ |
+| GET | `/api/connections/:platform/start` → redirect to consent (mock: instant) | 2 ✅ |
+| GET | `/api/connections/:platform/callback` | 2 ✅ |
+| DELETE | `/api/connections/:id` | 2 ✅ |
+| GET | `/api/ad-accounts` · PATCH `/api/ad-accounts/:id` (select) | 2 ✅ |
 | POST | `/api/ad-accounts/:id/sync` | 3 |
 | GET | `/api/ad-accounts/:id/metrics?level=&from=&to=` | 3 |
 | GET | `/api/ad-accounts/:id/entities` | 3 |
@@ -129,7 +129,8 @@ body variants plus image variations. Users download or copy them. Nothing is upl
 ## 6. Milestones
 
 1. **Scaffold** ✅: Vite + React + Hono Worker, Better Auth (email/password), Drizzle schema plus first migration, Hyperdrive config, local Postgres.
-2. **Connections (mock):** the mock provider, a connect flow that creates a mock `ad_connection` and `ad_account` rows, and an account picker UI. Real Meta OAuth behind the same interface, testable against your own account.
+2. **Connections (mock)** ✅: deterministic mock provider for both platforms (`providers/mock.ts`, with the anomalies from §1), the OAuth flow (one-time `state` in KV, encrypted tokens, account import), and the account picker UI.
+   *Deferred:* the real Meta OAuth adapter, until a Meta developer app exists. It only needs to implement `AdsProvider` and be returned by `getProvider()`.
 3. **Sync pipeline:** Cron → Queue → consumer; 30-day backfill and then daily upserts; sync status UI; raw payloads to R2.
 4. **Rules engine + recommendations feed:** the six rules above, dedup, accept/dismiss.
 5. **AI review:** Claude via AI Gateway, structured output, an "AI summary" panel.

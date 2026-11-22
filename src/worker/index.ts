@@ -1,16 +1,9 @@
 import { Hono } from "hono";
-import { createDb, type Db } from "./db/client";
-import { createAuth, type Auth, type AuthSession } from "./auth";
-
-type AppEnv = {
-  Bindings: Env;
-  Variables: {
-    db: Db;
-    auth: Auth;
-    user: AuthSession["user"] | null;
-    session: AuthSession["session"] | null;
-  };
-};
+import { createDb } from "./db/client";
+import { createAuth } from "./auth";
+import type { AppEnv, AuthedEnv } from "./app-env";
+import { connections } from "./routes/connections";
+import { adAccounts } from "./routes/ad-accounts";
 
 const app = new Hono<AppEnv>().basePath("/api");
 
@@ -38,7 +31,7 @@ app.get("/health", async (c) => {
 });
 
 // Everything below requires a signed-in user.
-const authed = new Hono<AppEnv>();
+const authed = new Hono<AuthedEnv>();
 authed.use("*", async (c, next) => {
   const result = await c.get("auth").api.getSession({ headers: c.req.raw.headers });
   if (!result) return c.json({ error: "unauthorized" }, 401);
@@ -48,9 +41,12 @@ authed.use("*", async (c, next) => {
 });
 
 authed.get("/me", (c) => {
-  const user = c.get("user")!;
+  const user = c.get("user");
   return c.json({ id: user.id, email: user.email, name: user.name });
 });
+
+authed.route("/connections", connections);
+authed.route("/ad-accounts", adAccounts);
 
 app.route("/", authed);
 
