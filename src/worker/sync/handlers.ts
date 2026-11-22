@@ -1,21 +1,23 @@
 import { and, eq } from "drizzle-orm";
 import { createDb } from "../db/client";
 import { adAccount, adConnection } from "../db/schema";
-import { enqueueSync, type SyncMessage } from "./enqueue";
+import { enqueueSync, type QueueMessage } from "./enqueue";
 import { runSync } from "./run";
+import { runAiReview } from "../ai/review";
 
-/** Queue consumer: one message per sync run. */
-export async function handleSyncBatch(batch: MessageBatch<SyncMessage>, env: Env): Promise<void> {
+/** Queue consumer: one message per sync run or AI review. */
+export async function handleQueueBatch(batch: MessageBatch<QueueMessage>, env: Env): Promise<void> {
   const { db, sql } = createDb(env);
   try {
     for (const msg of batch.messages) {
       try {
-        const outcome = await runSync(env, db, msg.body.syncRunId);
+        const body = msg.body;
+        const outcome = body.type === "ai_review" ? await runAiReview(env, db, body.aiReviewId) : await runSync(env, db, body.syncRunId);
         if (outcome === "retry") msg.retry({ delaySeconds: 30 * msg.attempts });
         else msg.ack();
       } catch (err) {
         // Infrastructure failure (e.g. DB down) before the run could record anything.
-        console.error("sync message failed", err);
+        console.error("queue message failed", err);
         msg.retry({ delaySeconds: 60 });
       }
     }

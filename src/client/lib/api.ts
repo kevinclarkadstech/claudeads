@@ -65,6 +65,7 @@ export interface Recommendation {
   body: string;
   evidence: Record<string, unknown> | null;
   estimatedImpact: {
+    note?: string;
     metric?: string;
     direction?: "save" | "increase";
     amountMicros?: number;
@@ -74,6 +75,17 @@ export interface Recommendation {
   status: RecStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AiReview {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  provider: "anthropic" | "mock";
+  model: string | null;
+  summary: string | null;
+  error: string | null;
+  createdAt: string;
+  finishedAt: string | null;
 }
 
 export class ApiError extends Error {
@@ -124,6 +136,9 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
+  aiReview: (id: string) =>
+    request<{ review: AiReview | null; provider: "anthropic" | "mock"; nextAvailableAt: string | null }>(`/api/ad-accounts/${id}/ai-review`),
+  runAiReview: (id: string) => request<{ aiReviewId: string }>(`/api/ad-accounts/${id}/ai-review`, { method: "POST" }),
   /** Full-page navigation: the OAuth flow redirects away and back. */
   startConnect: (platform: Platform) => {
     window.location.href = `/api/connections/${platform}/start`;

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { adAccount, adConnection, adEntity, dailyMetric, recommendation, syncRun } from "./app";
+import { adAccount, adConnection, adEntity, aiReview, dailyMetric, recommendation, syncRun } from "./app";
 
 export const adConnectionRelations = relations(adConnection, ({ many }) => ({
   adAccounts: many(adAccount),
@@ -30,4 +30,10 @@ export const syncRunRelations = relations(syncRun, ({ one }) => ({
 export const recommendationRelations = relations(recommendation, ({ one }) => ({
   adAccount: one(adAccount, { fields: [recommendation.adAccountId], references: [adAccount.id] }),
   entity: one(adEntity, { fields: [recommendation.entityId], references: [adEntity.id] }),
+  aiReview: one(aiReview, { fields: [recommendation.aiReviewId], references: [aiReview.id] }),
+}));
+
+export const aiReviewRelations = relations(aiReview, ({ one, many }) => ({
+  adAccount: one(adAccount, { fields: [aiReview.adAccountId], references: [adAccount.id] }),
+  recommendations: many(recommendation),
 }));

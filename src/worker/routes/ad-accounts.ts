@@ -8,6 +8,9 @@ import { isUuid } from "../lib/validate";
 import { addDays, isIsoDate, todayInTimezone } from "../lib/dates";
 import { enqueueSync, manualSyncAvailableAt } from "../sync/enqueue";
 import { latestRunsFor, publicRun } from "../sync/status";
+import { aiReviewAvailableAt, enqueueAiReview } from "../ai/review";
+import { aiProviderName } from "../ai";
+import { aiReview } from "../db/schema";
 
 const LEVELS = ["campaign", "ad_group", "ad"] as const;
 type Level = (typeof LEVELS)[number];
@@ -87,6 +90,46 @@ export const adAccounts = new Hono<AuthedEnv>()
     const retryAfter = Math.ceil((result.retryAt.getTime() - Date.now()) / 1000);
     c.header("Retry-After", String(retryAfter));
     return c.json({ error: "cooldown", message: "Synced recently.", retryAt: result.retryAt }, 429);
+  })
+
+  /** Latest AI review (status + summary) and when the next one is allowed. */
+  .get("/:id/ai-review", async (c) => {
+    const db = c.get("db");
+    const account = await findOwnedAccount(db, c.req.param("id"), c.get("user").id);
+    if (!account) return c.json({ error: "not_found" }, 404);
+    const [latest] = await db
+      .select({
+        id: aiReview.id,
+        status: aiReview.status,
+        provider: aiReview.provider,
+        model: aiReview.model,
+        summary: aiReview.summary,
+        error: aiReview.error,
+        createdAt: aiReview.createdAt,
+        finishedAt: aiReview.finishedAt,
+      })
+      .from(aiReview)
+      .where(eq(aiReview.adAccountId, account.id))
+      .orderBy(desc(aiReview.createdAt))
+      .limit(1);
+    return c.json({
+      review: latest ?? null,
+      provider: aiProviderName(c.env),
+      nextAvailableAt: await aiReviewAvailableAt(db, account.id),
+    });
+  })
+
+  /** Start an AI review (async). Limited to one at a time and one per cooldown window. */
+  .post("/:id/ai-review", async (c) => {
+    const db = c.get("db");
+    const account = await findOwnedAccount(db, c.req.param("id"), c.get("user").id);
+    if (!account) return c.json({ error: "not_found" }, 404);
+    const result = await enqueueAiReview(c.env, db, account);
+    if (result.ok) return c.json({ aiReviewId: result.aiReviewId }, 202);
+    if (result.reason === "no_data") return c.json({ error: "no_data", message: "Sync this account before running an AI review." }, 400);
+    if (result.reason === "in_progress") return c.json({ error: "in_progress", message: "An AI review is already running." }, 409);
+    c.header("Retry-After", String(Math.ceil((result.retryAt.getTime() - Date.now()) / 1000)));
+    return c.json({ error: "cooldown", message: "AI review ran recently.", retryAt: result.retryAt }, 429);
   })
 
   /**

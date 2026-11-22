@@ -163,6 +163,36 @@ export const syncRun = pgTable(
   ],
 );
 
+/** One AI analysis of an ad account (async, via the queue). */
+export const aiReview = pgTable(
+  "ai_review",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    adAccountId: uuid()
+      .notNull()
+      .references(() => adAccount.id, { onDelete: "cascade" }),
+    status: syncStatus().notNull().default("queued"),
+    /** "anthropic" or "mock". */
+    provider: text().notNull(),
+    model: text(),
+    /** The AI's overall assessment, shown above its recommendations. */
+    summary: text(),
+    inputTokens: integer(),
+    outputTokens: integer(),
+    attempts: integer().notNull().default(0),
+    error: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp({ withTimezone: true }),
+    finishedAt: timestamp({ withTimezone: true }),
+  },
+  (t) => [
+    index().on(t.adAccountId, t.createdAt),
+    uniqueIndex("ai_review_one_active_per_account")
+      .on(t.adAccountId)
+      .where(sql`${t.status} in ('queued', 'running')`),
+  ],
+);
+
 export const recommendation = pgTable(
   "recommendation",
   {
@@ -172,6 +202,8 @@ export const recommendation = pgTable(
       .references(() => adAccount.id, { onDelete: "cascade" }),
     entityId: uuid().references(() => adEntity.id, { onDelete: "cascade" }),
     source: recSource().notNull(),
+    /** Set for source = "ai": the review that produced it. */
+    aiReviewId: uuid().references(() => aiReview.id, { onDelete: "set null" }),
     /** Rule identifier (e.g. "cpa_spike") or AI model id. */
     ruleId: text().notNull(),
     severity: recSeverity().notNull(),

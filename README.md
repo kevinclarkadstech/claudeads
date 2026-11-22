@@ -7,8 +7,10 @@ See **[PLAN.md](./PLAN.md)** for the architecture and roadmap.
 React + Vite · Hono on Cloudflare Workers · Better Auth · Drizzle ORM · Neon Postgres via Hyperdrive
 
 ## Demo mode
-`USE_MOCK_PROVIDERS=true` (the default in `wrangler.jsonc`) makes "Connect Meta / Google" use generated
-sample accounts instead of the real APIs. No platform credentials are needed.
+- `USE_MOCK_PROVIDERS=true` (the default in `wrangler.jsonc`) makes "Connect Meta / Google" use generated
+  sample accounts instead of the real APIs. No platform credentials are needed.
+- `AI_PROVIDER=mock` (the default) runs the AI analysis with a local demo analyst. To use Claude, set
+  `AI_PROVIDER=anthropic` and put `ANTHROPIC_API_KEY` in `.dev.vars` (locally) or `wrangler secret put` (deployed).
 
 ## Local development
 
@@ -43,7 +45,8 @@ To fire the nightly cron by hand: `curl http://localhost:5173/cdn-cgi/handler/sc
 ```
 src/client/     React SPA (login, dashboard)
 src/worker/     Hono API: auth.ts, routes/, db/ (schema + client), lib/, providers/ (mock + interface),
-                sync/ (queue consumer, cron, enqueue rules), rules/ (recommendation engine)
+                sync/ (queue consumer, cron, enqueue rules), rules/ (recommendation engine),
+                ai/ (AI analysis: summary builder, Claude + mock analysts)
 test/           Vitest unit tests
 drizzle/        SQL migrations
 ```

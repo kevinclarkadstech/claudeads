@@ -2,11 +2,12 @@ import { Hono } from "hono";
 import { createDb } from "./db/client";
 import { createAuth } from "./auth";
 import type { AppEnv, AuthedEnv } from "./app-env";
+import { aiProviderName } from "./ai";
 import { connections } from "./routes/connections";
 import { adAccounts } from "./routes/ad-accounts";
 import { recommendations } from "./routes/recommendations";
-import { handleScheduled, handleSyncBatch } from "./sync/handlers";
-import type { SyncMessage } from "./sync/enqueue";
+import { handleScheduled, handleQueueBatch } from "./sync/handlers";
+import type { QueueMessage } from "./sync/enqueue";
 
 const app = new Hono<AppEnv>().basePath("/api");
 
@@ -30,7 +31,7 @@ app.on(["GET", "POST"], "/auth/*", (c) => c.get("auth").handler(c.req.raw));
 
 app.get("/health", async (c) => {
   await c.get("db").execute("select 1");
-  return c.json({ ok: true, mockProviders: c.env.USE_MOCK_PROVIDERS === "true" });
+  return c.json({ ok: true, mockProviders: c.env.USE_MOCK_PROVIDERS === "true", aiProvider: aiProviderName(c.env) });
 });
 
 // Everything below requires a signed-in user.
@@ -65,6 +66,6 @@ export default {
     ctx.waitUntil(handleScheduled(env));
   },
   async queue(batch, env) {
-    await handleSyncBatch(batch, env);
+    await handleQueueBatch(batch, env);
   },
-} satisfies ExportedHandler<Env, SyncMessage>;
+} satisfies ExportedHandler<Env, QueueMessage>;

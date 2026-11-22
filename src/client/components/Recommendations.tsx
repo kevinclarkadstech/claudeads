@@ -129,6 +129,11 @@ export function Recommendations({ adAccountId, refreshKey }: { adAccountId?: str
                   <SeverityIcon severity={r.severity} />
                   {SEVERITY_LABEL[r.severity]}
                 </span>
+                {r.source === "ai" && (
+                  <span className="badge ai" title="Suggested by AI analysis">
+                    AI{typeof r.evidence?.confidence === "string" ? ` · ${r.evidence.confidence} confidence` : ""}
+                  </span>
+                )}
                 <ImpactChip rec={r} />
                 <span className="muted small rec-meta">
                   {!adAccountId && (
@@ -141,6 +146,9 @@ export function Recommendations({ adAccountId, refreshKey }: { adAccountId?: str
               </div>
               <h4>{r.title}</h4>
               <p className={`rec-body ${expanded.has(r.id) ? "open" : ""}`}>{r.body}</p>
+              {r.source === "ai" && r.estimatedImpact?.note && expanded.has(r.id) && (
+                <p className="small impact-line"><strong>Expected impact:</strong> {r.estimatedImpact.note}</p>
+              )}
               <div className="row">
                 <button className="link small" onClick={() => toggle(r.id)} aria-expanded={expanded.has(r.id)}>
                   {expanded.has(r.id) ? "Show less" : "Show more"}

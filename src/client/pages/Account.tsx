@@ -4,6 +4,7 @@ import { api, ApiError, type AdAccount, type Level, type MetricsResponse, type T
 import { derive, money, num, pct, shortDate, timeAgo } from "../lib/format";
 import { LineChart } from "../components/LineChart";
 import { Recommendations } from "../components/Recommendations";
+import { AiReviewPanel } from "../components/AiReviewPanel";
 
 type Account = AdAccount & { nextManualSyncAt: string | null };
 
@@ -26,6 +27,7 @@ export function AccountPage() {
   const [now, setNow] = useState(Date.now());
   const wasActive = useRef(false);
   const [syncGeneration, setSyncGeneration] = useState(0);
+  const bumpRecs = useCallback(() => setSyncGeneration((g) => g + 1), []);
 
   const loadAccount = useCallback(async () => {
     try {
@@ -143,6 +145,7 @@ export function AccountPage() {
       ) : (
         <>
           <Kpis current={metrics.totals.current} previous={metrics.totals.previous} currency={metrics.currency} />
+          <AiReviewPanel adAccountId={account.id} onComplete={bumpRecs} />
           <Recommendations adAccountId={account.id} refreshKey={syncGeneration} />
           <div className="charts">
             <LineChart

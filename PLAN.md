@@ -95,7 +95,7 @@ partition by month (Postgres native partitioning) and/or keep ad-level rows for 
 | POST | `/api/ad-accounts/:id/sync` (manual; 409 if running, 429 in cooldown) | 3 ✅ |
 | GET | `/api/ad-accounts/:id/metrics?days=\|from=&to=&level=` | 3 ✅ |
 | GET | `/api/recommendations?status=&adAccountId=` (with per-status counts) · PATCH `/api/recommendations/:id` | 4 ✅ |
-| POST | `/api/ad-accounts/:id/ai-review` | 5 |
+| GET · POST | `/api/ad-accounts/:id/ai-review` (latest review + cooldown · start one; 409 running, 429 cooldown) | 5 ✅ |
 | POST | `/api/creatives/generate` | 7 |
 
 ---
@@ -126,11 +126,38 @@ Code: `src/worker/rules/`. Each rule is a pure function over `RuleContext`, whic
 Thresholds live in `DEFAULT_CONFIG`. Making them per-account settings (e.g. a target CPA) is a later step.
 Tests: `test/rules.test.ts` checks that each problem planted in the mock data is flagged on exactly the right entity.
 
-### AI layer (Claude, on demand and weekly)
-Input: a compact JSON summary (top entities, trends, fired rules, the account's goal and target CPA/ROAS).
-We never send raw dumps. Output: structured JSON recommendations (title, rationale, evidence refs,
-expected impact, confidence), validated with a schema and stored with `source = 'ai'`.
-Routed through AI Gateway for logging, caching and spend caps.
+### AI layer (Claude, on demand) ✅
+Code: `src/worker/ai/`. Two implementations of `AiAnalyst`, chosen by `AI_PROVIDER`:
+- **`mock` (default):** reasons over the same summary with simple rules. For example, it combines "wasted spend" and a "budget-limited winner" into a reallocation, and puts broken tracking first. No API key is needed.
+- **`anthropic`:** Claude Opus 5.5 via `client.beta.messages.parse`, with:
+  - structured output (a Zod schema, `AiReviewOutput`);
+  - effort `high` (adaptive thinking is always on);
+  - `fallbacks: "default"`, so a refusal is retried on a fallback model in the same call;
+  - a prompt-cached system prompt.
+
+  If `AI_GATEWAY_URL` is set, requests go through Cloudflare AI Gateway.
+
+**Input** (`summary.ts`): a compact JSON view.
+- Top campaigns, ad groups and ads (capped at 15 / 25 / 30), ranked by spend.
+- Each has recent-7-day stats and the baseline as a weekly average, so the numbers compare directly.
+- The last 14 days of the account trend.
+- The rule findings.
+- Entities use short refs (`C1`, `G4`, `A12`), so internal ids never reach the model. About 5.5k input tokens per review.
+
+**Flow:**
+- A review runs on the background queue (`ai_review` table) with the same guardrails as syncs:
+  - one active review per account (partial unique index);
+  - a 30-minute cooldown;
+  - retries and stale-run recovery.
+- Results become `recommendation` rows with `source = 'ai'`.
+- A new review replaces the previous review's *open* AI recommendations. It skips any suggestion matching one dismissed in the last 14 days (same entity and category).
+- Token usage is stored per review for cost tracking.
+
+**Tests** (`test/ai.test.ts`): summary refs and normalization, mock output on every demo account, and the real Claude
+path with HTTP mocked. That test checks the request shape (model, effort, schema, fallbacks, caching, gateway URL) and the handling of refusals and truncation.
+
+**Not yet verified live:** a real call with an API key. Before switching AI Gateway on, check whether it passes the SDK's
+`Authorization: Bearer` API-key header through.
 
 ### Creatives (Gemini, after the MVP)
 Given an ad's copy and image, its metrics and a recommendation (e.g. fatigue), generate N headline and
@@ -153,7 +180,9 @@ body variants plus image variations. Users download or copy them. Nothing is upl
    - **Account page:** KPI tiles with change vs. the previous period, spend and conversion charts, a daily data table, and a campaign / ad set / ad breakdown.
    - *Deferred:* storing raw API payloads in R2. There are none with mock data; add it with the real adapters.
 4. **Rules engine + recommendations feed** ✅: the six rules above, overlap removal, lifecycle (open → done/dismissed/resolved, 14-day snooze), a feed across all accounts on the dashboard, and per-account recommendations on the account page.
-5. **AI review:** Claude via AI Gateway, structured output, an "AI summary" panel.
+5. **AI review** ✅: the mock analyst plus Claude (`AI_PROVIDER`), queued reviews with guardrails, an "AI analysis" panel, and AI-badged recommendations.
+   To go live: `npx wrangler secret put ANTHROPIC_API_KEY`, set `AI_PROVIDER` to `anthropic` (and optionally `AI_GATEWAY_URL`).
+   *Later:* a weekly scheduled review on paid plans, and grouping rule and AI cards that cover the same entity.
 6. **Google Ads:** REST plus GAQL adapter into the same normalized tables.
 7. **Gemini creative drafts.**
 8. **SaaS hardening:** email verification, password reset (needs an email provider), Google sign-in,
@@ -167,5 +196,6 @@ body variants plus image variations. Users download or copy them. Nothing is upl
 2. `npx wrangler hyperdrive create claudeads-db --connection-string="<neon-url>"`, then put the id in `wrangler.jsonc`.
 3. `DATABASE_URL=<neon-url> npm run db:migrate`
 4. `npx wrangler secret put BETTER_AUTH_SECRET` and `npx wrangler secret put TOKEN_ENCRYPTION_KEY`
+   (plus `ANTHROPIC_API_KEY` when `AI_PROVIDER=anthropic`)
 5. Set `APP_URL` to the production origin (a `vars` override or `env.production`).
 6. `npm run deploy`

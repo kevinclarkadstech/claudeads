@@ -42,9 +42,15 @@
   },
   "vars": {
     "APP_URL": "http://localhost:5173",
-    "USE_MOCK_PROVIDERS": "true"
+    "USE_MOCK_PROVIDERS": "true",
+    // "mock" (default) or "anthropic" (needs the ANTHROPIC_API_KEY secret).
+    "AI_PROVIDER": "mock",
+    "AI_MODEL": "claude-opus-5-5",
+    // Optional: https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_id>/anthropic
+    "AI_GATEWAY_URL": ""
   }
   // Secrets (set with `npx wrangler secret put <NAME>`, or .dev.vars locally):
   //   BETTER_AUTH_SECRET     – random 32+ byte string
   //   TOKEN_ENCRYPTION_KEY   – base64-encoded 32 bytes, encrypts ad-platform OAuth tokens
+  //   ANTHROPIC_API_KEY      – only when AI_PROVIDER is "anthropic"
 }

@@ -8,7 +8,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "typecheck": "tsc",
-    "cf-typegen": "wrangler types",
+    "cf-typegen": "wrangler types --strict-vars=false",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
@@ -23,13 +23,15 @@
   },
   "homepage": "https://github.com/kevinclarkadstech/claudeads#readme",
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
     "better-auth": "^1.7.27",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.20",
     "postgres": "^4.1.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router": "^8.5.2"
+    "react-router": "^8.5.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.70.1",

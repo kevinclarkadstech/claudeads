@@ -5,7 +5,9 @@ import { addDays, todayInTimezone } from "../lib/dates";
 import { BACKFILL_DAYS, MANUAL_COOLDOWN_MS, RESYNC_DAYS, STALE_SYNC_MS } from "./config";
 
 export type SyncTrigger = "initial" | "scheduled" | "manual";
-export type SyncMessage = { syncRunId: string };
+export type SyncMessage = { type?: "sync"; syncRunId: string };
+/** Everything on the background queue. `type` is optional on sync messages for backward compatibility. */
+export type QueueMessage = SyncMessage | { type: "ai_review"; aiReviewId: string };
 
 type Account = typeof adAccount.$inferSelect;
 
@@ -51,6 +53,13 @@ export async function enqueueSync(env: Env, db: Db, account: Account, trigger: S
     );
 
   if (trigger === "manual") {
+    // Report "already running" ahead of the cooldown when a sync (e.g. the nightly one) is in flight.
+    const [active] = await db
+      .select({ id: syncRun.id })
+      .from(syncRun)
+      .where(and(eq(syncRun.adAccountId, account.id), inArray(syncRun.status, ["queued", "running"])))
+      .limit(1);
+    if (active) return { ok: false, reason: "in_progress" };
     const retryAt = await manualSyncAvailableAt(db, account.id);
     if (retryAt) return { ok: false, reason: "cooldown", retryAt };
   }
@@ -71,7 +80,7 @@ export async function enqueueSync(env: Env, db: Db, account: Account, trigger: S
   }
 
   try {
-    await env.SYNC_QUEUE.send({ syncRunId: id } satisfies SyncMessage);
+    await env.SYNC_QUEUE.send({ type: "sync", syncRunId: id } satisfies QueueMessage);
   } catch (err) {
     await db.update(syncRun).set({ status: "failed", error: "Could not enqueue", finishedAt: new Date() }).where(eq(syncRun.id, id));
     throw err;
