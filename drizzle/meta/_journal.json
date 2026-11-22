@@ -8,6 +8,13 @@
       "when": 1795384978667,
       "tag": "0000_unknown_darkhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795386249625,
+      "tag": "0001_glorious_tiger_shark",
+      "breakpoints": true
     }
   ]
 }

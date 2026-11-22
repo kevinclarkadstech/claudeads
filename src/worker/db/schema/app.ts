@@ -17,12 +17,14 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "./auth";
 
 export const platform = pgEnum("platform", ["meta", "google"]);
 export const connectionStatus = pgEnum("connection_status", ["active", "expired", "revoked", "error"]);
 export const entityLevel = pgEnum("entity_level", ["account", "campaign", "ad_group", "ad"]);
 export const syncStatus = pgEnum("sync_status", ["queued", "running", "succeeded", "failed"]);
+export const syncTrigger = pgEnum("sync_trigger", ["initial", "scheduled", "manual"]);
 export const recSource = pgEnum("rec_source", ["rule", "ai"]);
 export const recSeverity = pgEnum("rec_severity", ["info", "warning", "critical"]);
 export const recStatus = pgEnum("rec_status", ["open", "accepted", "dismissed"]);
@@ -141,6 +143,8 @@ export const syncRun = pgTable(
       .notNull()
       .references(() => adAccount.id, { onDelete: "cascade" }),
     status: syncStatus().notNull().default("queued"),
+    trigger: syncTrigger().notNull(),
+    attempts: integer().notNull().default(0),
     rangeStart: date().notNull(),
     rangeEnd: date().notNull(),
     rowsUpserted: integer().notNull().default(0),
@@ -149,7 +153,13 @@ export const syncRun = pgTable(
     finishedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index().on(t.adAccountId, t.createdAt)],
+  (t) => [
+    index().on(t.adAccountId, t.createdAt),
+    // At most one in-flight sync per account; enforced by the DB, not just app logic.
+    uniqueIndex("sync_run_one_active_per_account")
+      .on(t.adAccountId)
+      .where(sql`${t.status} in ('queued', 'running')`),
+  ],
 );
 
 export const recommendation = pgTable(

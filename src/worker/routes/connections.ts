@@ -5,6 +5,7 @@ import { encryptSecret } from "../lib/crypto";
 import { getProvider, isPlatform } from "../providers";
 import type { AuthedEnv } from "../app-env";
 import { isUuid } from "../lib/validate";
+import { latestRunsFor, publicRun } from "../sync/status";
 
 const STATE_TTL_SECONDS = 600;
 
@@ -25,7 +26,13 @@ export const connections = new Hono<AuthedEnv>()
       columns: { accessTokenEnc: false, refreshTokenEnc: false },
       with: { adAccounts: { orderBy: asc(adAccount.name) } },
     });
-    return c.json({ mockMode: c.env.USE_MOCK_PROVIDERS === "true", connections: rows });
+    const runs = await latestRunsFor(db, rows.flatMap((r) => r.adAccounts.map((a) => a.id)));
+    const byAccount = new Map(runs.map((r) => [r.adAccountId, r]));
+    const connections = rows.map((conn) => ({
+      ...conn,
+      adAccounts: conn.adAccounts.map((a) => ({ ...a, latestSync: publicRun(byAccount.get(a.id)) })),
+    }));
+    return c.json({ mockMode: c.env.USE_MOCK_PROVIDERS === "true", connections });
   })
 
   /** Begin OAuth: store a one-time state and redirect to the provider's consent screen. */

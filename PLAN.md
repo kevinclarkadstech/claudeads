@@ -43,7 +43,7 @@ Cloudflare Worker (Hono) ── Better Auth (email+password; social later)
    │        └── Queues ◄── Cron Trigger (nightly sync fan-out)
    ▼
 Hyperdrive ─► Neon Postgres (Drizzle ORM)
-R2: raw API payloads, generated creatives   KV: OAuth state, small caches
+R2: raw API payloads, generated creatives   KV: OAuth state
 ```
 
 - **Frontend:** React 19 + React Router, Vite, served by Workers Static Assets (`/api/*` hits the Worker first).
@@ -91,9 +91,9 @@ partition by month (Postgres native partitioning) and/or keep ad-level rows for 
 | GET | `/api/connections/:platform/callback` | 2 ✅ |
 | DELETE | `/api/connections/:id` | 2 ✅ |
 | GET | `/api/ad-accounts` · PATCH `/api/ad-accounts/:id` (select) | 2 ✅ |
-| POST | `/api/ad-accounts/:id/sync` | 3 |
-| GET | `/api/ad-accounts/:id/metrics?level=&from=&to=` | 3 |
-| GET | `/api/ad-accounts/:id/entities` | 3 |
+| GET | `/api/ad-accounts/:id` (incl. latest sync + manual-sync cooldown) | 3 ✅ |
+| POST | `/api/ad-accounts/:id/sync` (manual; 409 if running, 429 in cooldown) | 3 ✅ |
+| GET | `/api/ad-accounts/:id/metrics?days=\|from=&to=&level=` | 3 ✅ |
 | GET | `/api/recommendations?status=` · PATCH `/api/recommendations/:id` | 4 |
 | POST | `/api/ad-accounts/:id/ai-review` | 5 |
 | POST | `/api/creatives/generate` | 7 |
@@ -131,7 +131,15 @@ body variants plus image variations. Users download or copy them. Nothing is upl
 1. **Scaffold** ✅: Vite + React + Hono Worker, Better Auth (email/password), Drizzle schema plus first migration, Hyperdrive config, local Postgres.
 2. **Connections (mock)** ✅: deterministic mock provider for both platforms (`providers/mock.ts`, with the anomalies from §1), the OAuth flow (one-time `state` in KV, encrypted tokens, account import), and the account picker UI.
    *Deferred:* the real Meta OAuth adapter, until a Meta developer app exists. It only needs to implement `AdsProvider` and be returned by `getProvider()`.
-3. **Sync pipeline:** Cron → Queue → consumer; 30-day backfill and then daily upserts; sync status UI; raw payloads to R2.
+3. **Sync pipeline + account dashboard** ✅
+   - **Triggers:** all three go through one queue (`sync/enqueue.ts`), so they share retries and concurrency limits:
+     - *initial*: fires automatically when an account is first selected;
+     - *scheduled*: nightly cron at 07:00 UTC;
+     - *manual*: the "Sync now" button.
+   - **Ranges:** the first sync backfills 60 days (a 30-day view plus its comparison period, and the rules' 28-day baseline + 7 days). Later syncs re-fetch the last 7 days, because platforms restate conversions.
+   - **Limits:** at most one active sync per account, enforced by a partial unique index. Manual syncs have a 10-minute cooldown. A run stuck for 30 minutes is marked timed out. A failed run retries up to 3 times with backoff; failures that retrying can't fix (e.g. a revoked connection) don't retry.
+   - **Account page:** KPI tiles with change vs. the previous period, spend and conversion charts, a daily data table, and a campaign / ad set / ad breakdown.
+   - *Deferred:* storing raw API payloads in R2. There are none with mock data; add it with the real adapters.
 4. **Rules engine + recommendations feed:** the six rules above, dedup, accept/dismiss.
 5. **AI review:** Claude via AI Gateway, structured output, an "AI summary" panel.
 6. **Google Ads:** REST plus GAQL adapter into the same normalized tables.

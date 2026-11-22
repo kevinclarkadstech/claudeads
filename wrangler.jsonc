@@ -23,6 +23,23 @@
     // One-time OAuth `state` values (10 min TTL). No id needed: `wrangler deploy` auto-provisions it.
     { "binding": "OAUTH_STATE" }
   ],
+  "queues": {
+    "producers": [{ "binding": "SYNC_QUEUE", "queue": "claudeads-sync" }],
+    "consumers": [
+      {
+        "queue": "claudeads-sync",
+        "max_batch_size": 5,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        // Concurrency cap protects the ad platforms' rate limits.
+        "max_concurrency": 5
+      }
+    ]
+  },
+  "triggers": {
+    // Nightly sync of every selected ad account (07:00 UTC ≈ after US midnight).
+    "crons": ["0 7 * * *"]
+  },
   "vars": {
     "APP_URL": "http://localhost:5173",
     "USE_MOCK_PROVIDERS": "true"

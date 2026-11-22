@@ -4,6 +4,8 @@ import { createAuth } from "./auth";
 import type { AppEnv, AuthedEnv } from "./app-env";
 import { connections } from "./routes/connections";
 import { adAccounts } from "./routes/ad-accounts";
+import { handleScheduled, handleSyncBatch } from "./sync/handlers";
+import type { SyncMessage } from "./sync/enqueue";
 
 const app = new Hono<AppEnv>().basePath("/api");
 
@@ -57,4 +59,10 @@ app.onError((err, c) => {
 
 export default {
   fetch: app.fetch,
-} satisfies ExportedHandler<Env>;
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(handleScheduled(env));
+  },
+  async queue(batch, env) {
+    await handleSyncBatch(batch, env);
+  },
+} satisfies ExportedHandler<Env, SyncMessage>;

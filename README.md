@@ -23,6 +23,10 @@ npm run db:migrate                   # apply Drizzle migrations
 npm run dev                          # http://localhost:5173
 ```
 
+## Syncing locally
+Selecting an account queues its first sync automatically; the queue runs locally under `npm run dev`.
+To fire the nightly cron by hand: `curl http://localhost:5173/cdn-cgi/handler/scheduled`
+
 ## Scripts
 | Script | What it does |
 |---|---|
@@ -38,7 +42,8 @@ npm run dev                          # http://localhost:5173
 ## Layout
 ```
 src/client/     React SPA (login, dashboard)
-src/worker/     Hono API: auth.ts, routes/, db/ (schema + client), lib/, providers/ (mock + interface)
+src/worker/     Hono API: auth.ts, routes/, db/ (schema + client), lib/, providers/ (mock + interface),
+                sync/ (queue consumer, cron, enqueue rules)
 test/           Vitest unit tests
 drizzle/        SQL migrations
 ```

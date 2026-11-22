@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { api, type AdAccount, type Connection, type Platform } from "../lib/api";
+import { timeAgo } from "../lib/format";
 
 const PLATFORM_LABEL: Record<Platform, string> = { meta: "Meta Ads", google: "Google Ads" };
 
@@ -24,6 +25,16 @@ export function Connections() {
     void load();
   }, [load]);
 
+  // Poll while any account is importing so the status updates without a reload.
+  const anySyncing = connections?.some((c) =>
+    c.adAccounts.some((a) => a.latestSync?.status === "queued" || a.latestSync?.status === "running"),
+  );
+  useEffect(() => {
+    if (!anySyncing) return;
+    const t = setTimeout(load, 2000);
+    return () => clearTimeout(t);
+  }, [anySyncing, connections, load]);
+
   // Flash messages from the OAuth callback redirect.
   const connected = params.get("connected");
   const connectError = params.get("connect_error");
@@ -38,7 +49,8 @@ export function Connections() {
       })) ?? null,
     );
     try {
-      await api.setAccountSelected(account.id, !account.isSelected);
+      const { syncStarted } = await api.setAccountSelected(account.id, !account.isSelected);
+      if (syncStarted) void load();
     } catch (e) {
       setError((e as Error).message);
       void load();
@@ -102,14 +114,18 @@ export function Connections() {
                   <p className="muted small">Choose the accounts to sync and analyze:</p>
                   <ul className="accounts">
                     {conn.adAccounts.map((a) => (
-                      <li key={a.id}>
+                      <li key={a.id} className="account-row">
                         <label className="check">
                           <input type="checkbox" checked={a.isSelected} onChange={() => toggle(a)} />
                           <span>
                             {a.name}
                             <span className="muted small"> · {a.externalId} · {a.currency}</span>
+                            {a.isSelected && <AccountSyncLine account={a} />}
                           </span>
                         </label>
+                        {a.isSelected && a.lastSyncedAt && (
+                          <Link className="small view-link" to={`/accounts/${a.id}`}>View →</Link>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -125,4 +141,13 @@ export function Connections() {
       </section>
     </>
   );
+}
+
+function AccountSyncLine({ account }: { account: AdAccount }) {
+  const s = account.latestSync;
+  let text = "Waiting for first sync";
+  if (s?.status === "queued" || s?.status === "running") text = s.trigger === "initial" ? "Importing history…" : "Syncing…";
+  else if (s?.status === "failed") text = "Last sync failed";
+  else if (s?.status === "succeeded") text = `Synced ${timeAgo(s.finishedAt ?? s.createdAt)}`;
+  return <span className={`sync-line small ${s?.status === "failed" ? "error" : "muted"}`}>{text}</span>;
 }
