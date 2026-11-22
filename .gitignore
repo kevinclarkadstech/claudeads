@@ -111,3 +111,9 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Cloudflare / local dev
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
