@@ -1,0 +1,2 @@
+# claudeads
+Trying Claude
