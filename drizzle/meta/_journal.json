@@ -15,6 +15,13 @@
       "when": 1795386249625,
       "tag": "0001_glorious_tiger_shark",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795386856277,
+      "tag": "0002_misty_morg",
+      "breakpoints": true
     }
   ]
 }

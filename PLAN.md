@@ -94,7 +94,7 @@ partition by month (Postgres native partitioning) and/or keep ad-level rows for 
 | GET | `/api/ad-accounts/:id` (incl. latest sync + manual-sync cooldown) | 3 ✅ |
 | POST | `/api/ad-accounts/:id/sync` (manual; 409 if running, 429 in cooldown) | 3 ✅ |
 | GET | `/api/ad-accounts/:id/metrics?days=\|from=&to=&level=` | 3 ✅ |
-| GET | `/api/recommendations?status=` · PATCH `/api/recommendations/:id` | 4 |
+| GET | `/api/recommendations?status=&adAccountId=` (with per-status counts) · PATCH `/api/recommendations/:id` | 4 ✅ |
 | POST | `/api/ad-accounts/:id/ai-review` | 5 |
 | POST | `/api/creatives/generate` | 7 |
 
@@ -102,17 +102,29 @@ partition by month (Postgres native partitioning) and/or keep ad-level rows for 
 
 ## 5. Analysis
 
-### Deterministic rules (run after each sync)
-Each rule is a pure function `(metrics, entities, account settings) → Recommendation[]` with a stable fingerprint.
+### Deterministic rules (run after each successful sync) ✅
+Code: `src/worker/rules/`. Each rule is a pure function over `RuleContext`, which holds per-entity totals for two windows
+(computed in SQL by `load.ts`), plus account daily totals.
+- **Recent window:** the last 7 *complete* days. Today is partial, so it's excluded.
+- **Baseline window:** the 28 days before that.
 
-1. **CPA spike:** 7-day CPA ≥ 30% above the prior 28-day baseline, with minimum spend and conversions.
-2. **Creative fatigue (Meta):** frequency > 4 and CTR down ≥ 25% vs. the first week of the ad's life.
-3. **Wasted spend:** ad set or ad with spend ≥ 2× target CPA and zero conversions.
-4. **Budget-limited winner:** ROAS well above the account average while spending near its full daily budget.
-5. **Low CTR outlier:** CTR < 50% of the account median at the same level (minimum impressions).
-6. **Tracking anomaly:** conversions drop to ~0 account-wide while clicks hold steady.
+1. **CPA spike** (ad group / ad set): recent CPA ≥ 30% above baseline (critical at ≥ 75%). Needs ≥ 10 baseline conversions and ≥ $50 recent spend.
+   The message says whether pricier clicks or a lower conversion rate caused it.
+2. **Creative fatigue** (ad, Meta only, since it needs reach): frequency ≥ 4 and CTR down ≥ 25% vs. baseline.
+3. **Wasted spend** (ad group, then ad): zero conversions with spend ≥ 2× the account's CPA. An ad isn't reported if its ad group already is.
+4. **Budget-limited winner** (campaign): spending ≥ 90% of its daily budget with ROAS ≥ 1.3× the account's.
+   Impact estimate: +20% budget at 80% of current ROAS.
+5. **Low CTR outlier** (ad): CTR < 50% of the median across the account's ads (≥ 2,000 impressions, ≥ 4 peers). Skipped for ads already flagged for fatigue.
+6. **Tracking anomaly** (account): the last complete day had normal clicks but ≤ 10% of typical conversions. Always critical.
 
-Thresholds are per-account settings with sensible defaults.
+**Lifecycle.** The fingerprint is `rule:entity`, unique per account.
+- A new finding opens a recommendation.
+- A finding that's still present refreshes its numbers.
+- Dismissed or "done" recommendations stay closed for 14 days, then reopen if the issue persists.
+- Open recommendations whose condition cleared become `resolved`.
+
+Thresholds live in `DEFAULT_CONFIG`. Making them per-account settings (e.g. a target CPA) is a later step.
+Tests: `test/rules.test.ts` checks that each problem planted in the mock data is flagged on exactly the right entity.
 
 ### AI layer (Claude, on demand and weekly)
 Input: a compact JSON summary (top entities, trends, fired rules, the account's goal and target CPA/ROAS).
@@ -140,7 +152,7 @@ body variants plus image variations. Users download or copy them. Nothing is upl
    - **Limits:** at most one active sync per account, enforced by a partial unique index. Manual syncs have a 10-minute cooldown. A run stuck for 30 minutes is marked timed out. A failed run retries up to 3 times with backoff; failures that retrying can't fix (e.g. a revoked connection) don't retry.
    - **Account page:** KPI tiles with change vs. the previous period, spend and conversion charts, a daily data table, and a campaign / ad set / ad breakdown.
    - *Deferred:* storing raw API payloads in R2. There are none with mock data; add it with the real adapters.
-4. **Rules engine + recommendations feed:** the six rules above, dedup, accept/dismiss.
+4. **Rules engine + recommendations feed** ✅: the six rules above, overlap removal, lifecycle (open → done/dismissed/resolved, 14-day snooze), a feed across all accounts on the dashboard, and per-account recommendations on the account page.
 5. **AI review:** Claude via AI Gateway, structured output, an "AI summary" panel.
 6. **Google Ads:** REST plus GAQL adapter into the same normalized tables.
 7. **Gemini creative drafts.**

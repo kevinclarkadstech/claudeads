@@ -46,6 +46,36 @@ export interface MetricsResponse {
   entities: (Totals & { id: string; name: string; status: string; parentId: string | null; parentName: string | null; dailyBudgetMicros: number | null })[];
 }
 
+export type RecStatus = "open" | "accepted" | "dismissed" | "resolved";
+export type Severity = "info" | "warning" | "critical";
+
+export interface Recommendation {
+  id: string;
+  adAccountId: string;
+  accountName: string;
+  platform: Platform;
+  currency: string;
+  entityId: string | null;
+  entityName: string | null;
+  entityLevel: Level | "account" | null;
+  source: "rule" | "ai";
+  ruleId: string;
+  severity: Severity;
+  title: string;
+  body: string;
+  evidence: Record<string, unknown> | null;
+  estimatedImpact: {
+    metric?: string;
+    direction?: "save" | "increase";
+    amountMicros?: number;
+    conversions?: number;
+    period?: string;
+  } | null;
+  status: RecStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, public body: { error?: string; message?: string; retryAt?: string }) {
     super(body.message ?? body.error ?? `Request failed (${status})`);
@@ -85,6 +115,15 @@ export const api = {
   syncNow: (id: string) => request<{ syncRunId: string }>(`/api/ad-accounts/${id}/sync`, { method: "POST" }),
   metrics: (id: string, days: number, level: Level) =>
     request<MetricsResponse>(`/api/ad-accounts/${id}/metrics?days=${days}&level=${level}`),
+  recommendations: (status: RecStatus, adAccountId?: string) =>
+    request<{ recommendations: Recommendation[]; counts: Record<RecStatus, number> }>(
+      `/api/recommendations?status=${status}${adAccountId ? `&adAccountId=${adAccountId}` : ""}`,
+    ),
+  setRecommendationStatus: (id: string, status: Exclude<RecStatus, "resolved">) =>
+    request<{ recommendation: { id: string; status: RecStatus } }>(`/api/recommendations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
   /** Full-page navigation: the OAuth flow redirects away and back. */
   startConnect: (platform: Platform) => {
     window.location.href = `/api/connections/${platform}/start`;

@@ -43,7 +43,7 @@ To fire the nightly cron by hand: `curl http://localhost:5173/cdn-cgi/handler/sc
 ```
 src/client/     React SPA (login, dashboard)
 src/worker/     Hono API: auth.ts, routes/, db/ (schema + client), lib/, providers/ (mock + interface),
-                sync/ (queue consumer, cron, enqueue rules)
+                sync/ (queue consumer, cron, enqueue rules), rules/ (recommendation engine)
 test/           Vitest unit tests
 drizzle/        SQL migrations
 ```

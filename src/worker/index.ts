@@ -4,6 +4,7 @@ import { createAuth } from "./auth";
 import type { AppEnv, AuthedEnv } from "./app-env";
 import { connections } from "./routes/connections";
 import { adAccounts } from "./routes/ad-accounts";
+import { recommendations } from "./routes/recommendations";
 import { handleScheduled, handleSyncBatch } from "./sync/handlers";
 import type { SyncMessage } from "./sync/enqueue";
 
@@ -49,6 +50,7 @@ authed.get("/me", (c) => {
 
 authed.route("/connections", connections);
 authed.route("/ad-accounts", adAccounts);
+authed.route("/recommendations", recommendations);
 
 app.route("/", authed);
 

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."rec_status" ADD VALUE 'resolved';

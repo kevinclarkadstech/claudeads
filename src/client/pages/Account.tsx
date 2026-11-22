@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { api, ApiError, type AdAccount, type Level, type MetricsResponse, type Totals } from "../lib/api";
 import { derive, money, num, pct, shortDate, timeAgo } from "../lib/format";
 import { LineChart } from "../components/LineChart";
+import { Recommendations } from "../components/Recommendations";
 
 type Account = AdAccount & { nextManualSyncAt: string | null };
 
@@ -24,6 +25,7 @@ export function AccountPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const wasActive = useRef(false);
+  const [syncGeneration, setSyncGeneration] = useState(0);
 
   const loadAccount = useCallback(async () => {
     try {
@@ -57,6 +59,7 @@ export function AccountPage() {
     if (wasActive.current) {
       wasActive.current = false;
       void loadMetrics();
+      setSyncGeneration((g) => g + 1);
     }
   }, [account, loadAccount, loadMetrics]);
 
@@ -140,6 +143,7 @@ export function AccountPage() {
       ) : (
         <>
           <Kpis current={metrics.totals.current} previous={metrics.totals.previous} currency={metrics.currency} />
+          <Recommendations adAccountId={account.id} refreshKey={syncGeneration} />
           <div className="charts">
             <LineChart
               title="Spend per day"

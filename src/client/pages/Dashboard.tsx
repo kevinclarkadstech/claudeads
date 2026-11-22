@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { signOut, useSession } from "../lib/auth-client";
 import { Connections } from "../components/Connections";
+import { Recommendations } from "../components/Recommendations";
 
 type Me = { id: string; email: string; name: string };
 
@@ -35,6 +36,7 @@ export function DashboardPage() {
       <main>
         <h2>Welcome{me ? `, ${me.name}` : ""}</h2>
         <Connections />
+        <Recommendations />
       </main>
     </div>
   );

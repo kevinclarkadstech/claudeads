@@ -27,7 +27,8 @@ export const syncStatus = pgEnum("sync_status", ["queued", "running", "succeeded
 export const syncTrigger = pgEnum("sync_trigger", ["initial", "scheduled", "manual"]);
 export const recSource = pgEnum("rec_source", ["rule", "ai"]);
 export const recSeverity = pgEnum("rec_severity", ["info", "warning", "critical"]);
-export const recStatus = pgEnum("rec_status", ["open", "accepted", "dismissed"]);
+/** resolved = the rule stopped firing (the issue cleared on its own or was fixed). */
+export const recStatus = pgEnum("rec_status", ["open", "accepted", "dismissed", "resolved"]);
 
 const timestamps = {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),

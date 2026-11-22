@@ -42,3 +42,14 @@ export function timeAgo(iso: string): string {
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
 }
+
+/** Rounded, scannable amount for chips: "$909", "$4.5K". */
+export function moneyShort(micros: number, currency: string): string {
+  const v = micros / 1e6;
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    notation: v >= 1000 ? "compact" : "standard",
+    maximumFractionDigits: v >= 1000 ? 1 : 0,
+  }).format(v);
+}

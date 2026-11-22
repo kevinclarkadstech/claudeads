@@ -5,6 +5,7 @@ import { decryptSecret } from "../lib/crypto";
 import { getProvider } from "../providers";
 import type { ProviderEntity } from "../providers/types";
 import { INSERT_CHUNK, MAX_ATTEMPTS } from "./config";
+import { runRules } from "../rules/engine";
 
 const excluded = (column: string): SQL => sql.raw(`excluded.${column}`);
 
@@ -32,6 +33,13 @@ export async function runSync(env: Env, db: Db, syncRunId: string): Promise<Sync
     const now = new Date();
     await db.update(syncRun).set({ status: "succeeded", rowsUpserted: rows, error: null, finishedAt: now }).where(eq(syncRun.id, run.id));
     await db.update(adAccount).set({ lastSyncedAt: now, updatedAt: now }).where(eq(adAccount.id, run.adAccountId));
+    // Recommendations are derived data: a rules failure is logged but doesn't fail the sync.
+    try {
+      const r = await runRules(db, run.adAccountId);
+      console.log(`rules ${run.adAccountId}: ${r.findings} findings, ${r.opened} new, ${r.resolved} resolved`);
+    } catch (err) {
+      console.error(`rules ${run.adAccountId} failed:`, err);
+    }
     return "done";
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
