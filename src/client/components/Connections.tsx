@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { api, type AdAccount, type Connection, type Platform } from "../lib/api";
+import type { AdAccount, Connection, Platform } from "../lib/api";
+import { useApi, usePaths } from "../lib/api-context";
 import { timeAgo } from "../lib/format";
 
 const PLATFORM_LABEL: Record<Platform, string> = { meta: "Meta Ads", google: "Google Ads" };
 
 export function Connections() {
+  const api = useApi();
+  const paths = usePaths();
   const [params, setParams] = useSearchParams();
   const [mockMode, setMockMode] = useState(false);
   const [connections, setConnections] = useState<Connection[] | null>(null);
@@ -19,7 +22,7 @@ export function Connections() {
     } catch (e) {
       setError((e as Error).message);
     }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     void load();
@@ -71,7 +74,7 @@ export function Connections() {
 
   return (
     <>
-      {mockMode && (
+      {mockMode && !api.isDemo && (
         <div className="banner">
           <strong>Demo mode.</strong> Connections use generated sample data, not real ad accounts.
         </div>
@@ -124,15 +127,17 @@ export function Connections() {
                           </span>
                         </label>
                         {a.isSelected && a.lastSyncedAt && (
-                          <Link className="small view-link" to={`/accounts/${a.id}`}>View →</Link>
+                          <Link className="small view-link" to={paths.account(a.id)}>View →</Link>
                         )}
                       </li>
                     ))}
                   </ul>
-                  <div className="row">
-                    <button className="secondary" onClick={() => api.startConnect(platform)}>Reconnect</button>
-                    <button className="link danger" onClick={() => disconnect(conn)}>Disconnect</button>
-                  </div>
+                  {!api.isDemo && (
+                    <div className="row">
+                      <button className="secondary" onClick={() => api.startConnect(platform)}>Reconnect</button>
+                      <button className="link danger" onClick={() => disconnect(conn)}>Disconnect</button>
+                    </div>
+                  )}
                 </>
               )}
             </div>

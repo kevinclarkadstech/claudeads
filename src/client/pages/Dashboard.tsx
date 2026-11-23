@@ -21,7 +21,7 @@ export function DashboardPage() {
   return (
     <div className="shell">
       <header>
-        <strong>ClaudeAds</strong>
+        <strong>AstuteAds</strong>
         <span className="muted">{session?.user.email}</span>
         <button
           className="link"

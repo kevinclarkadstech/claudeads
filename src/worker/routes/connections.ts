@@ -51,7 +51,7 @@ export const connections = new Hono<AuthedEnv>()
   /** OAuth callback: verify state, exchange code, store encrypted tokens, import ad accounts. */
   .get("/:platform/callback", async (c) => {
     const platform = c.req.param("platform");
-    const fail = (reason: string) => c.redirect(`/?connect_error=${encodeURIComponent(reason)}`);
+    const fail = (reason: string) => c.redirect(`/app?connect_error=${encodeURIComponent(reason)}`);
     if (!isPlatform(platform)) return fail("unknown_platform");
 
     const { code, state, error } = c.req.query();
@@ -120,7 +120,7 @@ export const connections = new Hono<AuthedEnv>()
         });
     }
 
-    return c.redirect(`/?connected=${platform}`);
+    return c.redirect(`/app?connected=${platform}`);
   })
 
   /** Disconnect: deletes the connection and (via cascade) its accounts and data. */

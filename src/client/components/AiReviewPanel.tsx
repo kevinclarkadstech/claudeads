@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, type AiReview } from "../lib/api";
+import { ApiError, type AiReview } from "../lib/api";
+import { useApi } from "../lib/api-context";
 import { timeAgo } from "../lib/format";
 
 const isActive = (r: AiReview | null) => r?.status === "queued" || r?.status === "running";
 
 /** Runs an AI review of the account and shows its overall assessment. Calls onComplete when a review finishes. */
 export function AiReviewPanel({ adAccountId, onComplete }: { adAccountId: string; onComplete: () => void }) {
+  const api = useApi();
   const [review, setReview] = useState<AiReview | null>(null);
   const [provider, setProvider] = useState<"anthropic" | "mock">("mock");
   const [nextAt, setNextAt] = useState<number>(0);
@@ -25,7 +27,7 @@ export function AiReviewPanel({ adAccountId, onComplete }: { adAccountId: string
     } finally {
       setLoaded(true);
     }
-  }, [adAccountId]);
+  }, [api, adAccountId]);
 
   useEffect(() => void load(), [load]);
 

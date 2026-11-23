@@ -1,7 +1,12 @@
-# ClaudeAds
+# AstuteAds
 
-Ad analytics and recommendations for Meta and Google Ads, running on Cloudflare Workers.
+Finds the leaks in Meta and Google Ads budgets: daily checks plus AI-ranked recommendations, running on Cloudflare.
 See **[PLAN.md](./PLAN.md)** for the architecture and roadmap.
+
+This repo has two deployments:
+- **Public site:** the landing page, an instant in-browser demo, and a waitlist (Cloudflare D1). See **[DEPLOY.md](./DEPLOY.md)**.
+  The Meta ad test plan is in [marketing/meta-ad-test.md](./marketing/meta-ad-test.md).
+- **Full app:** logins, Postgres, ad-account sync, the rules engine and AI review. The instructions below cover it.
 
 ## Stack
 React + Vite · Hono on Cloudflare Workers · Better Auth · Drizzle ORM · Neon Postgres via Hyperdrive
@@ -32,7 +37,8 @@ To fire the nightly cron by hand: `curl http://localhost:5173/cdn-cgi/handler/sc
 ## Scripts
 | Script | What it does |
 |---|---|
-| `npm run dev` | Vite dev server with the Worker running in workerd |
+| `npm run dev` | Full app: Vite dev server with the Worker running in workerd |
+| `npm run dev:public` / `build:public` / `deploy:public` | Public site (landing page, demo, waitlist) |
 | `npm run build` | Build the SPA and Worker |
 | `npm run deploy` | Build and `wrangler deploy` |
 | `npm run typecheck` | `tsc` |
@@ -43,7 +49,8 @@ To fire the nightly cron by hand: `curl http://localhost:5173/cdn-cgi/handler/sc
 
 ## Layout
 ```
-src/client/     React SPA (login, dashboard)
+src/client/     React SPA: landing page, demo (demo/ = in-browser API), app pages
+src/public/     Public-site Worker (waitlist + funnel events on D1)
 src/worker/     Hono API: auth.ts, routes/, db/ (schema + client), lib/, providers/ (mock + interface),
                 sync/ (queue consumer, cron, enqueue rules), rules/ (recommendation engine),
                 ai/ (AI analysis: summary builder, Claude + mock analysts)

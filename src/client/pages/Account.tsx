@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { api, ApiError, type AdAccount, type Level, type MetricsResponse, type Totals } from "../lib/api";
+import { ApiError, type AdAccount, type Level, type MetricsResponse, type Totals } from "../lib/api";
+import { useApi, usePaths } from "../lib/api-context";
 import { derive, money, num, pct, shortDate, timeAgo } from "../lib/format";
 import { LineChart } from "../components/LineChart";
 import { Recommendations } from "../components/Recommendations";
@@ -17,6 +18,8 @@ const LEVEL_LABEL: Record<"meta" | "google", Record<Level, string>> = {
 const isActive = (a: Account | null) => a?.latestSync?.status === "queued" || a?.latestSync?.status === "running";
 
 export function AccountPage() {
+  const api = useApi();
+  const paths = usePaths();
   const { id } = useParams<{ id: string }>();
   const [account, setAccount] = useState<Account | null>(null);
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
@@ -38,7 +41,7 @@ export function AccountPage() {
       setError(e instanceof ApiError && e.status === 404 ? "Account not found." : (e as Error).message);
       return null;
     }
-  }, [id]);
+  }, [api, id]);
 
   const loadMetrics = useCallback(async () => {
     try {
@@ -46,7 +49,7 @@ export function AccountPage() {
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [id, days, level]);
+  }, [api, id, days, level]);
 
   useEffect(() => void loadAccount(), [loadAccount]);
   useEffect(() => void loadMetrics(), [loadMetrics]);
@@ -116,7 +119,7 @@ export function AccountPage() {
                   : "Sync now"}
             </button>
           ) : (
-            <Link to="/" className="small">Select this account to sync it</Link>
+            <Link to={paths.home} className="small">Select this account to sync it</Link>
           )}
         </div>
       </div>
@@ -203,10 +206,11 @@ export function AccountPage() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
+  const paths = usePaths();
   return (
     <div className="shell">
       <header>
-        <Link to="/" className="brand">← ClaudeAds</Link>
+        <Link to={paths.home} className="brand">← AstuteAds</Link>
       </header>
       <main>{children}</main>
     </div>

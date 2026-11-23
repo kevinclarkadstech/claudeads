@@ -1,43 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { buildTree, generateMetrics } from "../src/worker/providers/mock";
-import type { Platform, ProviderDailyMetric } from "../src/worker/providers/types";
-import { windowsFor } from "../src/worker/rules/load";
-import { evaluate, sumTotals } from "../src/worker/rules/rules";
-import { DEFAULT_CONFIG, type EntityStats, type RuleContext, type Totals } from "../src/worker/rules/types";
-import { addDays } from "../src/worker/lib/dates";
+import type { Platform } from "../src/worker/providers/types";
+import { contextFromProviderData, windowsFor } from "../src/worker/rules/context";
+import { evaluate } from "../src/worker/rules/rules";
+import type { RuleContext } from "../src/worker/rules/types";
 import { buildAccountSummary } from "../src/worker/ai/summary";
 import { createMockAnalyst, mockReview } from "../src/worker/ai/mock";
 import { createClaudeAnalyst } from "../src/worker/ai/claude";
 import { AiReviewOutput } from "../src/worker/ai/types";
 
-// Same mock-data context builder as rules.test.ts, with uuid-like ids to check they don't leak.
 const TODAY = "2026-11-22";
-const toTotals = (m: ProviderDailyMetric): Totals => ({
-  impressions: m.impressions, clicks: m.clicks, spendMicros: m.spendMicros,
-  conversions: m.conversions, conversionValueMicros: m.conversionValueMicros, reach: m.reach ?? null,
-});
 const fakeUuid = (s: string) => `00000000-0000-4000-8000-${s.replace(/\D/g, "").padStart(12, "0").slice(-12)}`;
 
 function mockContext(platform: Platform, account: string): RuleContext {
   const w = windowsFor(TODAY);
-  const { entities } = buildTree(platform, account);
-  const rows = generateMetrics(platform, account, { start: w.baselineStart, end: w.recentEnd }, new Date(`${TODAY}T12:00:00Z`));
-  const names = new Map(entities.map((e) => [e.externalId, e.name]));
-  const stats: EntityStats[] = entities.map((e) => {
-    const mine = rows.filter((r) => r.externalId === e.externalId);
-    const win = (a: string, b: string) => sumTotals(mine.filter((r) => r.date >= a && r.date <= b).map(toTotals));
-    return {
-      id: fakeUuid(e.externalId), level: e.level, name: e.name,
-      parentId: e.parentExternalId ? fakeUuid(e.parentExternalId) : null,
-      parentName: e.parentExternalId ? names.get(e.parentExternalId)! : null,
-      status: e.status, dailyBudgetMicros: e.dailyBudgetMicros ?? null,
-      recent: win(w.recentStart, w.recentEnd), baseline: win(w.baselineStart, w.baselineEnd),
-    };
+  return contextFromProviderData({
+    account: { id: account, platform, currency: "USD" },
+    today: TODAY,
+    entities: buildTree(platform, account).entities,
+    rows: generateMetrics(platform, account, { start: w.baselineStart, end: w.recentEnd }, new Date(`${TODAY}T12:00:00Z`)),
+    idOf: fakeUuid, // uuid-like ids, to check they never leak into the AI summary
   });
-  const accountDaily = [];
-  for (let d = w.baselineStart; d <= w.recentEnd; d = addDays(d, 1))
-    accountDaily.push({ date: d, ...sumTotals(rows.filter((r) => r.level === "campaign" && r.date === d).map(toTotals)) });
-  return { account: { id: account, platform, currency: "USD" }, windows: w, entities: stats, accountDaily, config: DEFAULT_CONFIG };
 }
 
 function summaryFor(platform: Platform, account: string) {

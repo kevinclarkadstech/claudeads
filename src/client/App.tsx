@@ -12,6 +12,6 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 export function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const { data, isPending } = useSession();
   if (isPending) return <div className="center muted">Loading…</div>;
-  if (data) return <Navigate to="/" replace />;
+  if (data) return <Navigate to="/app" replace />;
   return <>{children}</>;
 }

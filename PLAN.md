@@ -1,4 +1,4 @@
-# ClaudeAds — Build Plan
+# AstuteAds — Build Plan
 
 A multi-tenant SaaS on Cloudflare where users sign in, connect their **Meta** and **Google Ads**
 accounts (read-only), and get **recommendations** from deterministic rules and an AI layer.
@@ -30,6 +30,15 @@ Things that can start before forming an entity:
 - Google: apply for a test developer token from a manager (MCC) account and use test accounts.
 
 ---
+
+### Status: public validation site ✅
+Built from the same code:
+- the landing page;
+- an instant demo that runs the mock provider, rules and mock AI **in the browser** (`src/client/demo/demo-api.ts`);
+- a waitlist on D1, with Turnstile, first-touch UTM attribution, funnel events and the Meta Pixel (`Lead`, `ViewContent`);
+- a draft privacy policy.
+
+It deploys with `npm run deploy:public` (DEPLOY.md). The ad test plan is in `marketing/meta-ad-test.md`.
 
 ## 2. Architecture
 

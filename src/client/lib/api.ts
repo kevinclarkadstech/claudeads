@@ -115,6 +115,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  /** True for the in-browser demo (no server; sample data). */
+  isDemo: false as boolean,
   connections: () => request<{ mockMode: boolean; connections: Connection[] }>("/api/connections"),
   disconnect: (id: string) => request<{ ok: true }>(`/api/connections/${id}`, { method: "DELETE" }),
   setAccountSelected: (id: string, isSelected: boolean) =>

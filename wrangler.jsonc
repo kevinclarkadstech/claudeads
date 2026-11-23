@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "claudeads",
+  "name": "astuteads-app",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -13,7 +13,7 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      // Replace with the id from `npx wrangler hyperdrive create claudeads-db --connection-string=<neon-url>`
+      // Replace with the id from `npx wrangler hyperdrive create astuteads-db --connection-string=<neon-url>`
       "id": "00000000000000000000000000000000",
       // Used by `npm run dev` (local Postgres, see README)
       "localConnectionString": "postgres://claudeads:claudeads@localhost:5432/claudeads"
@@ -24,10 +24,10 @@
     { "binding": "OAUTH_STATE" }
   ],
   "queues": {
-    "producers": [{ "binding": "SYNC_QUEUE", "queue": "claudeads-sync" }],
+    "producers": [{ "binding": "SYNC_QUEUE", "queue": "astuteads-sync" }],
     "consumers": [
       {
-        "queue": "claudeads-sync",
+        "queue": "astuteads-sync",
         "max_batch_size": 5,
         "max_batch_timeout": 5,
         "max_retries": 3,

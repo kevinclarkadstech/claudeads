@@ -3,23 +3,12 @@ import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import type { Db } from "../db/client";
 import { adAccount, adEntity, dailyMetric } from "../db/schema";
 import { addDays, todayInTimezone } from "../lib/dates";
+import { windowsFor } from "./context";
 import { DEFAULT_CONFIG, type RuleContext, type Totals } from "./types";
 
 type Account = typeof adAccount.$inferSelect;
 
-/**
- * Windows end yesterday (in the account's timezone): today's numbers are partial and
- * would make every metric look like it dropped.
- */
-export function windowsFor(today: string) {
-  const recentEnd = addDays(today, -1);
-  return {
-    recentStart: addDays(recentEnd, -6),
-    recentEnd,
-    baselineStart: addDays(recentEnd, -34),
-    baselineEnd: addDays(recentEnd, -7),
-  };
-}
+export { windowsFor } from "./context";
 
 function windowSums(prefix: string, from: string, to: string) {
   const inWindow = sql`${dailyMetric.date} between ${from} and ${to}`;

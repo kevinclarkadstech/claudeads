@@ -1,12 +1,15 @@
 {
-  "name": "claudeads",
+  "name": "astuteads",
   "version": "1.0.0",
-  "description": "Ad analytics + recommendations on Cloudflare",
+  "description": "AstuteAds: ad spend analysis and recommendations for Meta and Google Ads, on Cloudflare",
   "scripts": {
     "dev": "vite",
+    "dev:public": "vite --mode public",
     "build": "vite build",
+    "build:public": "vite build --mode public",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
+    "deploy:public": "npm run build:public && wrangler deploy",
     "typecheck": "tsc",
     "cf-typegen": "wrangler types --strict-vars=false",
     "db:generate": "drizzle-kit generate",

@@ -3,12 +3,12 @@ import type { Db } from "../db/client";
 import { adAccount, recommendation } from "../db/schema";
 import { loadRuleContext } from "./load";
 import { evaluate } from "./rules";
-import type { Finding } from "./types";
+import { fingerprintOf } from "./fingerprint";
 
 /** Days a dismissed/accepted recommendation stays closed before the same issue can reopen it. */
 export const SNOOZE_DAYS = 14;
 
-export const fingerprintOf = (f: Pick<Finding, "ruleId" | "entityId">) => `${f.ruleId}:${f.entityId ?? "account"}`;
+export { fingerprintOf } from "./fingerprint";
 
 export interface RulesResult {
   findings: number;

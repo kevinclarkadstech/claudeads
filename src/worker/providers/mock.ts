@@ -61,7 +61,7 @@ interface MockAccountDef extends ProviderAdAccount {
   scenario: "primary" | "secondary";
 }
 
-const ACCOUNTS: Record<Platform, MockAccountDef[]> = {
+export const ACCOUNTS: Record<Platform, MockAccountDef[]> = {
   meta: [
     { externalId: "act_1000000001", name: "Acme Outdoor — US", currency: "USD", timezone: "America/New_York", scenario: "primary" },
     { externalId: "act_1000000002", name: "Acme Outdoor — EU", currency: "EUR", timezone: "Europe/Berlin", scenario: "secondary" },

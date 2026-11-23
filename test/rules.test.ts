@@ -1,56 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { buildTree, generateMetrics } from "../src/worker/providers/mock";
-import type { Platform, ProviderDailyMetric } from "../src/worker/providers/types";
-import { windowsFor } from "../src/worker/rules/load";
+import type { Platform } from "../src/worker/providers/types";
+import { contextFromProviderData, windowsFor } from "../src/worker/rules/context";
 import { evaluate, sumTotals, cpaSpike, wastedSpend, trackingAnomaly, lowCtr } from "../src/worker/rules/rules";
-import { DEFAULT_CONFIG, type EntityStats, type RuleContext, type Totals } from "../src/worker/rules/types";
-import { addDays } from "../src/worker/lib/dates";
+import { DEFAULT_CONFIG, type RuleContext } from "../src/worker/rules/types";
 
 const TODAY = "2026-11-22";
 
-const toTotals = (m: ProviderDailyMetric): Totals => ({
-  impressions: m.impressions,
-  clicks: m.clicks,
-  spendMicros: m.spendMicros,
-  conversions: m.conversions,
-  conversionValueMicros: m.conversionValueMicros,
-  reach: m.reach ?? null,
-});
-
-/** JS equivalent of the SQL loader, fed by the mock provider. */
+/** Mock-provider data → RuleContext via the same pure builder the demo uses. */
 function mockContext(platform: Platform, accountExternalId: string): RuleContext {
+  const today = new Date(`${TODAY}T12:00:00Z`);
   const w = windowsFor(TODAY);
-  const { entities } = buildTree(platform, accountExternalId);
-  const rows = generateMetrics(platform, accountExternalId, { start: w.baselineStart, end: w.recentEnd }, new Date(`${TODAY}T12:00:00Z`));
-  const byName = new Map(entities.map((e) => [e.externalId, e]));
-  const inRange = (d: string, a: string, b: string) => d >= a && d <= b;
-
-  const stats: EntityStats[] = entities.map((e) => {
-    const mine = rows.filter((r) => r.externalId === e.externalId);
-    return {
-      id: e.externalId,
-      level: e.level,
-      name: e.name,
-      parentId: e.parentExternalId,
-      parentName: e.parentExternalId ? byName.get(e.parentExternalId)!.name : null,
-      status: e.status,
-      dailyBudgetMicros: e.dailyBudgetMicros ?? null,
-      recent: sumTotals(mine.filter((r) => inRange(r.date, w.recentStart, w.recentEnd)).map(toTotals)),
-      baseline: sumTotals(mine.filter((r) => inRange(r.date, w.baselineStart, w.baselineEnd)).map(toTotals)),
-    };
-  });
-
-  const accountDaily = [];
-  for (let d = w.baselineStart; d <= w.recentEnd; d = addDays(d, 1)) {
-    accountDaily.push({ date: d, ...sumTotals(rows.filter((r) => r.level === "campaign" && r.date === d).map(toTotals)) });
-  }
-  return {
+  return contextFromProviderData({
     account: { id: accountExternalId, platform, currency: "USD" },
-    windows: w,
-    entities: stats,
-    accountDaily,
-    config: DEFAULT_CONFIG,
-  };
+    today: TODAY,
+    entities: buildTree(platform, accountExternalId).entities,
+    rows: generateMetrics(platform, accountExternalId, { start: w.baselineStart, end: w.recentEnd }, today),
+  });
 }
 
 const anomalyAds = (platform: Platform, account: string) => buildTree(platform, account).ads;

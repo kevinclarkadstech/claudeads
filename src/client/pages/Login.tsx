@@ -21,13 +21,13 @@ export function LoginPage() {
         : await signIn.email({ email, password });
     setBusy(false);
     if (error) setError(error.message ?? "Something went wrong");
-    else navigate("/", { replace: true });
+    else navigate("/app", { replace: true });
   }
 
   return (
     <main className="center">
       <form className="card auth" onSubmit={onSubmit}>
-        <h1>ClaudeAds</h1>
+        <h1>AstuteAds</h1>
         <p className="muted">
           {mode === "signin" ? "Sign in to your account" : "Create your account"}
         </p>

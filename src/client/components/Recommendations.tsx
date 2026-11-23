@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, type Recommendation, type RecStatus, type Severity } from "../lib/api";
+import type { Recommendation, RecStatus, Severity } from "../lib/api";
+import { useApi, usePaths } from "../lib/api-context";
 import { moneyShort, timeAgo } from "../lib/format";
 
 const TABS: { status: RecStatus; label: string }[] = [
@@ -57,6 +58,8 @@ function ImpactChip({ rec }: { rec: Recommendation }) {
 }
 
 export function Recommendations({ adAccountId, refreshKey }: { adAccountId?: string; refreshKey?: unknown }) {
+  const api = useApi();
+  const paths = usePaths();
   const [status, setStatus] = useState<RecStatus>("open");
   const [items, setItems] = useState<Recommendation[] | null>(null);
   const [counts, setCounts] = useState<Record<RecStatus, number> | null>(null);
@@ -72,7 +75,7 @@ export function Recommendations({ adAccountId, refreshKey }: { adAccountId?: str
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [status, adAccountId]);
+  }, [api, status, adAccountId]);
 
   useEffect(() => void load(), [load, refreshKey]);
 
@@ -138,7 +141,7 @@ export function Recommendations({ adAccountId, refreshKey }: { adAccountId?: str
                 <span className="muted small rec-meta">
                   {!adAccountId && (
                     <>
-                      <Link to={`/accounts/${r.adAccountId}`}>{r.accountName}</Link> ·{" "}
+                      <Link to={paths.account(r.adAccountId)}>{r.accountName}</Link> ·{" "}
                     </>
                   )}
                   {timeAgo(r.updatedAt)}
