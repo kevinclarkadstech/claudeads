@@ -1,0 +1,23 @@
+{
+  // Public site: landing page, in-browser demo, waitlist. Deploy with `npm run deploy:public`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "astuteads",
+  "main": "src/public/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    // No database_id needed: `wrangler deploy` creates the database on first deploy.
+    { "binding": "DB", "database_name": "astuteads-waitlist" }
+  ],
+  "vars": {
+    // Public values (sent to browsers). Fill in after creating them; see DEPLOY.md.
+    "TURNSTILE_SITE_KEY": "",
+    "META_PIXEL_ID": "",
+    "CONTACT_EMAIL": "hello@astuteads.com"
+  }
+  // Secret: TURNSTILE_SECRET_KEY (`npx wrangler secret put TURNSTILE_SECRET_KEY -c wrangler.public.jsonc`)
+}

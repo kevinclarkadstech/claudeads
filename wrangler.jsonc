@@ -1,0 +1,56 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "astuteads-app",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    // React SPA build output; /api/* is handled by the Worker first.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      // Replace with the id from `npx wrangler hyperdrive create astuteads-db --connection-string=<neon-url>`
+      "id": "00000000000000000000000000000000",
+      // Used by `npm run dev` (local Postgres, see README)
+      "localConnectionString": "postgres://claudeads:claudeads@localhost:5432/claudeads"
+    }
+  ],
+  "kv_namespaces": [
+    // One-time OAuth `state` values (10 min TTL). No id needed: `wrangler deploy` auto-provisions it.
+    { "binding": "OAUTH_STATE" }
+  ],
+  "queues": {
+    "producers": [{ "binding": "SYNC_QUEUE", "queue": "astuteads-sync" }],
+    "consumers": [
+      {
+        "queue": "astuteads-sync",
+        "max_batch_size": 5,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        // Concurrency cap protects the ad platforms' rate limits.
+        "max_concurrency": 5
+      }
+    ]
+  },
+  "triggers": {
+    // Nightly sync of every selected ad account (07:00 UTC ≈ after US midnight).
+    "crons": ["0 7 * * *"]
+  },
+  "vars": {
+    "APP_URL": "http://localhost:5173",
+    "USE_MOCK_PROVIDERS": "true",
+    // "mock" (default) or "anthropic" (needs the ANTHROPIC_API_KEY secret).
+    "AI_PROVIDER": "mock",
+    "AI_MODEL": "claude-opus-5-5",
+    // Optional: https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_id>/anthropic
+    "AI_GATEWAY_URL": ""
+  }
+  // Secrets (set with `npx wrangler secret put <NAME>`, or .dev.vars locally):
+  //   BETTER_AUTH_SECRET     – random 32+ byte string
+  //   TOKEN_ENCRYPTION_KEY   – base64-encoded 32 bytes, encrypts ad-platform OAuth tokens
+  //   ANTHROPIC_API_KEY      – only when AI_PROVIDER is "anthropic"
+}
